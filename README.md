@@ -29,9 +29,10 @@ Everything is stored in the browser's `localStorage` under the key
 { "id": "s0", "cat": "truth", "text": "...", "archived": false }
 ```
 
-The 26 built-in questions in `SEED` (15 truth, 11 dare) are only used the first
-time the page runs — after that your saved copy wins. Clearing site data resets
-it to the seed list. The store is per-browser, so two devices keep separate lists.
+The default deck has 40 built-in questions (25 truth, 15 dare). Existing saved
+decks receive the 14 added prompts once, then their saved copy wins. Clearing
+site data resets the deck. The store is per-browser, so two devices keep
+separate lists.
 
 ## Self-check
 

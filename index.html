@@ -189,7 +189,7 @@
 </div>
 
 <script>
-const SEED = {
+const BASE_SEED = {
   truth: [
     "If you got a dream job offer but it meant three years of long distance, what would you choose?",
     "During our long distance, have you ever thought about breaking up with me?",
@@ -222,21 +222,54 @@ const SEED = {
   ]
 };
 
+const SEED_ADDITIONS = [
+  {id:"s26", cat:"truth", text:"What is one thing you wish I understood about how you receive love?"},
+  {id:"s27", cat:"truth", text:"When do you feel most desired by me?"},
+  {id:"s28", cat:"truth", text:"What is a relationship fear you rarely say out loud?"},
+  {id:"s29", cat:"truth", text:"What is something small I do that makes you feel secure?"},
+  {id:"s30", cat:"truth", text:"Is there a conversation you have been avoiding with me?"},
+  {id:"s31", cat:"truth", text:"What is one way you want us to be more intentional with each other?"},
+  {id:"s32", cat:"truth", text:"What memory of us do you replay when you miss me?"},
+  {id:"s33", cat:"truth", text:"What kind of affection do you wish I initiated more often?"},
+  {id:"s34", cat:"truth", text:"What is something you want us to try together but have felt shy suggesting?"},
+  {id:"s35", cat:"truth", text:"What boundary helps you feel safest when we are being playful?"},
+  {id:"s36", cat:"dare", text:"Let your partner choose where you kiss them next."},
+  {id:"s37", cat:"dare", text:"Recreate the first hug you remember sharing."},
+  {id:"s38", cat:"dare", text:"Let your partner choose a flirty pose for you to hold for 15 seconds."},
+  {id:"s39", cat:"dare", text:"Let your partner guide a one-minute cuddle exactly how they want it."}
+];
+
 const KEY = "td-questions-v1";
+const SEED_VERSION_KEY = "td-questions-seed-version";
+const SEED_VERSION = 2;
 const IDLE = "Click Go! to start";
 let items = load();
 let cat = "truth", orgCat = "truth", addCat = "truth";
 let rot = 0, spinning = false;
 
-function load(){
-  try{
-    const raw = JSON.parse(localStorage.getItem(KEY));
-    if(Array.isArray(raw) && raw.length) return raw;
-  }catch(e){}
+function seedItems(){
   let id = 0;
-  return Object.entries(SEED).flatMap(function(e){
+  return Object.entries(BASE_SEED).flatMap(function(e){
     return e[1].map(function(t){ return {id:"s"+(id++), cat:e[0], text:t, archived:false}; });
-  });
+  }).concat(SEED_ADDITIONS.map(function(i){ return {...i, archived:false}; }));
+}
+function load(){
+  let raw;
+  try{
+    raw = JSON.parse(localStorage.getItem(KEY));
+  }catch(e){}
+  if(Array.isArray(raw) && raw.length){
+    if(Number(localStorage.getItem(SEED_VERSION_KEY)) < SEED_VERSION){
+      const ids = new Set(raw.map(i => i.id));
+      raw.push(...SEED_ADDITIONS.filter(i => !ids.has(i.id)).map(i => ({...i, archived:false})));
+      try{
+        localStorage.setItem(KEY, JSON.stringify(raw));
+        localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION));
+      }catch(e){}
+    }
+    return raw;
+  }
+  return seedItems();
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(items)); }catch(e){} }
 const active = c => items.filter(i => i.cat === c && !i.archived);
@@ -380,6 +413,9 @@ if(location.search.indexOf("test") > -1){
   ok(winnerIndex(90, 4) === 3, "90deg cw -> last segment under pointer");
   ok(winnerIndex(100, 10) === 7, "100deg over 10 segments");
   ok(winnerIndex(-90, 4) === 1, "negative rotation stays in range");
+  ok(seedItems().length === 40, "default deck has 40 questions");
+  ok(seedItems().filter(i => i.cat === "truth").length === 25, "default deck has 25 truth questions");
+  ok(seedItems().filter(i => i.cat === "dare").length === 15, "default deck has 15 dare questions");
   console.log("self-check done");
 }
 </script>
