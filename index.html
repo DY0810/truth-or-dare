@@ -239,9 +239,22 @@ const SEED_ADDITIONS = [
   {id:"s39", cat:"dare", text:"Let your partner guide a one-minute cuddle exactly how they want it."}
 ];
 
+const TRUTH_ADDITIONS = [
+  {id:"s40", cat:"truth", text:"What was your first not-so-innocent thought about me?"},
+  {id:"s41", cat:"truth", text:"Have you ever deliberately tried to make me jealous? What did you do?"},
+  {id:"s42", cat:"truth", text:"What's something I wear that makes it hard for you to pay attention?"},
+  {id:"s43", cat:"truth", text:"Have you ever acted uninterested when you actually wanted me to make a move?"},
+  {id:"s44", cat:"truth", text:"What's the boldest message you've typed to me and then deleted?"},
+  {id:"s45", cat:"truth", text:"What's something you pretend not to like when I do it, but secretly enjoy?"},
+  {id:"s46", cat:"truth", text:"When have you wanted to kiss me but held yourself back?"},
+  {id:"s47", cat:"truth", text:"What's one question you're relieved I haven't asked tonight?"},
+  {id:"s48", cat:"truth", text:"What do you miss about being single that you wouldn't normally admit?"},
+  {id:"s49", cat:"truth", text:"What's something you want to ask me but are afraid of my answer?"}
+];
+
 const KEY = "td-questions-v1";
 const SEED_VERSION_KEY = "td-questions-seed-version";
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 const IDLE = "Click Go! to start";
 let items = load();
 let cat = "truth", orgCat = "truth", addCat = "truth";
@@ -251,25 +264,29 @@ function seedItems(){
   let id = 0;
   return Object.entries(BASE_SEED).flatMap(function(e){
     return e[1].map(function(t){ return {id:"s"+(id++), cat:e[0], text:t, archived:false}; });
-  }).concat(SEED_ADDITIONS.map(function(i){ return {...i, archived:false}; }));
+  }).concat(SEED_ADDITIONS.concat(TRUTH_ADDITIONS).map(function(i){ return {...i, archived:false}; }));
 }
 function load(){
-  let raw;
+  let raw, version = 0;
   try{
     raw = JSON.parse(localStorage.getItem(KEY));
+    version = Number(localStorage.getItem(SEED_VERSION_KEY)) || 0;
   }catch(e){}
-  if(Array.isArray(raw) && raw.length){
-    if(Number(localStorage.getItem(SEED_VERSION_KEY)) < SEED_VERSION){
-      const ids = new Set(raw.map(i => i.id));
-      raw.push(...SEED_ADDITIONS.filter(i => !ids.has(i.id)).map(i => ({...i, archived:false})));
-      try{
-        localStorage.setItem(KEY, JSON.stringify(raw));
-        localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION));
-      }catch(e){}
-    }
-    return raw;
+  const fresh = !Array.isArray(raw);
+  if(fresh) raw = seedItems();
+  else if(version < SEED_VERSION){
+    // Apply only unseen batches, so deleted prompts from older batches stay deleted.
+    const additions = version < 2 ? SEED_ADDITIONS.concat(TRUTH_ADDITIONS) : TRUTH_ADDITIONS;
+    const ids = new Set(raw.map(i => i.id));
+    raw.push(...additions.filter(i => !ids.has(i.id)).map(i => ({...i, archived:false})));
   }
-  return seedItems();
+  if(fresh || version < SEED_VERSION){
+    try{
+      localStorage.setItem(KEY, JSON.stringify(raw));
+      localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION));
+    }catch(e){}
+  }
+  return raw;
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(items)); }catch(e){} }
 const active = c => items.filter(i => i.cat === c && !i.archived);
@@ -413,8 +430,8 @@ if(location.search.indexOf("test") > -1){
   ok(winnerIndex(90, 4) === 3, "90deg cw -> last segment under pointer");
   ok(winnerIndex(100, 10) === 7, "100deg over 10 segments");
   ok(winnerIndex(-90, 4) === 1, "negative rotation stays in range");
-  ok(seedItems().length === 40, "default deck has 40 questions");
-  ok(seedItems().filter(i => i.cat === "truth").length === 25, "default deck has 25 truth questions");
+  ok(seedItems().length === 50, "default deck has 50 questions");
+  ok(seedItems().filter(i => i.cat === "truth").length === 35, "default deck has 35 truth questions");
   ok(seedItems().filter(i => i.cat === "dare").length === 15, "default deck has 15 dare questions");
   console.log("self-check done");
 }

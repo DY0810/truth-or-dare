@@ -29,8 +29,9 @@ Everything is stored in the browser's `localStorage` under the key
 { "id": "s0", "cat": "truth", "text": "...", "archived": false }
 ```
 
-The default deck has 40 built-in questions (25 truth, 15 dare). Existing saved
-decks receive the 14 added prompts once, then their saved copy wins. Clearing
+The default deck has 50 built-in questions (35 truth, 15 dare). Existing saved
+decks receive each new batch once: the original 14 additions, then 10 more
+truths. Archived, deleted, and custom questions are preserved. Clearing
 site data resets the deck. The store is per-browser, so two devices keep
 separate lists.
 
@@ -38,3 +39,6 @@ separate lists.
 
 Load `index.html?test` and open the console: it asserts the wheel's
 "which segment is under the pointer" maths and logs `self-check done`.
+
+Run `node test-seeds.cjs` to check approved prompts, saved-deck migrations,
+unchanged dares, and reload behavior without modifying browser data.
