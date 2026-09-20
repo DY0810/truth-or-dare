@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T&amp;D</title>
+<style>
+  :root{
+    --ink:#141414; --muted:#7c7c74;
+    --truth:#2f8f4f;            /* truth = green */
+    --dare:#e03a2f;             /* dare  = red   */
+    --paper:#fffdf4; --tile:#eeeee8; --grout:rgba(0,0,0,.10); --tape:#ffd400;
+    --display:"Arial Black","Archivo Black",Impact,"Haettenschweiler",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  /* bathroom-tile grid, like the poster reference */
+  body{margin:0;color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    background-color:var(--tile);
+    background-image:
+      linear-gradient(90deg,var(--grout) 2px,transparent 2px),
+      linear-gradient(var(--grout) 2px,transparent 2px),
+      linear-gradient(140deg,#fff,rgba(255,255,255,0) 55%);
+    background-size:54px 54px,54px 54px,100% 100%;
+    display:flex;justify-content:center;padding:26px 16px 44px}
+  .app{width:100%;max-width:520px;display:flex;flex-direction:column;gap:24px}
+
+  header{display:flex;align-items:center;justify-content:space-between}
+  .logo{font-family:var(--display);font-size:30px;letter-spacing:1px;padding:4px 14px 6px;
+    background:var(--paper);border:3px solid var(--ink);border-radius:10px;
+    box-shadow:5px 5px 0 var(--ink);transform:rotate(-2deg)}
+  .logo .t{color:var(--truth)} .logo .d{color:var(--dare)}
+  .tools{display:flex;gap:12px}
+  .tool{width:44px;height:44px;border:3px solid var(--ink);border-radius:12px;background:var(--paper);
+    box-shadow:4px 4px 0 var(--ink);cursor:pointer;display:grid;place-items:center;
+    font-size:20px;font-weight:900;color:var(--ink)}
+  .tool:active,.toggle button:active,.row button:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+
+  .toggle{display:flex;gap:12px}
+  .toggle button{flex:1;border:3px solid var(--ink);border-radius:12px;background:var(--paper);
+    padding:14px;font-family:var(--display);font-size:17px;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--ink);cursor:pointer;box-shadow:4px 4px 0 var(--ink)}
+  .toggle button.on[data-cat=truth]{background:var(--truth);color:#fff}
+  .toggle button.on[data-cat=dare]{background:var(--dare);color:#fff}
+
+  .result{position:relative;min-height:104px;display:grid;place-items:center;text-align:center;
+    background:var(--paper);border:3px solid var(--ink);border-radius:14px;padding:24px 18px;
+    box-shadow:6px 6px 0 var(--ink);font-size:16px;font-weight:600;line-height:1.5}
+  .result .tape{position:absolute;top:-15px;left:18px;display:none;background:var(--tape);
+    border:3px solid var(--ink);border-radius:4px;padding:2px 10px;
+    font-family:var(--display);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;
+    transform:rotate(-3deg)}
+  .result.tagged .tape{display:block}
+  .result.idle #resultText{font-family:var(--display);font-size:14px;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--muted)}
+
+  /* the wheel breaks out of the column so it reads as the biggest thing on the page */
+  .wheelbox{position:relative;width:auto;aspect-ratio:1;margin:6px -12px 0}
+  .pointer{position:absolute;top:0;left:50%;width:30px;height:30px;background:#fff;
+    border:3px solid var(--ink);border-radius:50% 50% 50% 0;
+    transform:translateX(-50%) rotate(-45deg);z-index:3}
+  .wheelbox svg{width:100%;height:100%;display:block}
+  .ic{width:20px;height:20px;display:block;fill:none;stroke:currentColor;
+    stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .list li .ic{width:17px;height:17px}
+  /* SVG transform-origin defaults to the user-space origin, not the shape's center */
+  #wheel{transform-box:view-box;transform-origin:50% 50%;
+    transition:transform 4.5s cubic-bezier(.17,.67,.2,1)}
+  .go{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:22%;aspect-ratio:1;border-radius:50%;border:4px solid #fff;cursor:pointer;
+    background:var(--ink);color:#fff;font-family:var(--display);font-size:21px;letter-spacing:1px;
+    box-shadow:0 0 0 5px var(--truth);z-index:2}
+  .go.dare{box-shadow:0 0 0 5px var(--dare)}
+  .go:active{transform:translate(-50%,-50%) scale(.95)}
+
+  .overlay{position:fixed;inset:0;background:rgba(20,20,20,.45);display:none;
+    align-items:center;justify-content:center;padding:18px;z-index:10}
+  .overlay.on{display:flex}
+  .modal{background:var(--paper);border:3px solid var(--ink);border-radius:18px;padding:22px;
+    width:100%;max-width:420px;box-shadow:8px 8px 0 var(--ink);
+    max-height:82vh;display:flex;flex-direction:column;gap:16px}
+  .modal h2{margin:0;font-family:var(--display);font-size:20px;letter-spacing:1px;text-transform:uppercase}
+  .modal textarea{width:100%;min-height:104px;border:3px solid var(--ink);border-radius:12px;
+    padding:12px;font:inherit;font-size:15px;resize:vertical;background:#fff}
+  .row{display:flex;gap:10px}
+  .row button{flex:1;padding:13px;border:3px solid var(--ink);border-radius:12px;
+    font-family:var(--display);font-size:14px;letter-spacing:1px;text-transform:uppercase;
+    background:var(--paper);color:var(--ink);cursor:pointer;box-shadow:4px 4px 0 var(--ink)}
+  .pick.on[data-cat=truth]{background:var(--truth);color:#fff}
+  .pick.on[data-cat=dare]{background:var(--dare);color:#fff}
+  .primary{background:var(--ink);color:#fff}
+  .list{overflow:auto;display:flex;flex-direction:column;gap:12px;margin:0;padding:3px;list-style:none;
+    scrollbar-width:none;-ms-overflow-style:none}   /* still scrolls, just no visible bar */
+  .list::-webkit-scrollbar{display:none}
+  .list li{display:flex;gap:10px;align-items:flex-start;padding:13px;border:3px solid var(--ink);
+    border-radius:12px;background:#fff;box-shadow:3px 3px 0 var(--ink);font-size:14px;line-height:1.45}
+  .list li i.tag{flex:0 0 auto;width:11px;height:11px;border:2px solid var(--ink);
+    border-radius:50%;margin-top:4px}
+  i.tag.truth{background:var(--truth)} i.tag.dare{background:var(--dare)}
+  .list li span{flex:1;font-weight:500}
+  .list li button{border:none;background:none;cursor:pointer;font-size:15px;padding:0 2px;
+    color:var(--ink);display:grid;place-items:center;margin-top:2px}
+  .list li button.restore{background:var(--tape);color:var(--ink);border:3px solid var(--ink);
+    width:36px;height:36px;padding:6px;border-radius:50%;margin-top:0;box-shadow:2px 2px 0 var(--ink)}
+  .list li button.delete{color:var(--dare)}
+  .mhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .mhead .tool{width:38px;height:38px;box-shadow:3px 3px 0 var(--ink)}
+  .tabs{display:flex;gap:10px}
+  .tabs button{flex:1;padding:10px;border:3px solid var(--ink);border-radius:10px;background:var(--paper);
+    font-family:var(--display);font-size:13px;letter-spacing:1px;text-transform:uppercase;
+    color:var(--ink);cursor:pointer}
+  .tabs button.on{background:var(--ink);color:#fff}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+<symbol id="ico-inbox" viewBox="0 0 24 24">
+  <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
+  <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+</symbol>
+<symbol id="ico-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
+<symbol id="ico-restore" viewBox="0 0 24 24">
+  <path d="M3 12a9 9 0 1 0 3-6.7"/>
+  <path d="M3 4v5h5"/>
+</symbol>
+<symbol id="ico-trash" viewBox="0 0 24 24">
+  <path d="M3 6h18"/>
+  <path d="M8 6V4h8v2"/>
+  <path d="M19 6l-1 14H6L5 6"/>
+  <path d="M10 10v6M14 10v6"/>
+</symbol>
+</svg>
+
+<div class="app">
+  <header>
+    <div class="logo"><span class="t">T</span>&amp;<span class="d">D</span></div>
+    <div class="tools">
+      <button class="tool" id="btnAdd" title="Add question">+</button>
+      <button class="tool" id="btnOrg" title="Organize">&#9776;</button>
+    </div>
+  </header>
+
+  <div class="toggle">
+    <button data-cat="truth" class="on">Truth</button>
+    <button data-cat="dare">Dare</button>
+  </div>
+
+  <div class="result idle" id="result"><span class="tape" id="resultTag"></span><span id="resultText">Click Go! to start</span></div>
+
+  <div class="wheelbox">
+    <div class="pointer"></div>
+    <svg viewBox="0 0 400 400"><g id="wheel"></g></svg>
+    <button class="go" id="go">Go!</button>
+  </div>
+</div>
+
+<div class="overlay" id="ovAdd">
+  <div class="modal">
+    <h2>Add a question</h2>
+    <div class="row">
+      <button class="pick on" data-cat="truth">Truth</button>
+      <button class="pick" data-cat="dare">Dare</button>
+    </div>
+    <textarea id="addText" placeholder="Type your question or dare..."></textarea>
+    <div class="row">
+      <button class="ghost" data-close>Cancel</button>
+      <button class="primary" id="addSave">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovOrg">
+  <div class="modal">
+    <div class="mhead">
+      <h2 id="orgTitle">Questions</h2>
+      <button class="tool sm" id="viewToggle"></button>
+    </div>
+    <div class="tabs" id="orgTabs">
+      <button class="on" data-orgcat="truth">Truth</button>
+      <button data-orgcat="dare">Dare</button>
+    </div>
+    <ul class="list" id="orgList"></ul>
+    <div class="row"><button class="ghost" data-close>Done</button></div>
+  </div>
+</div>
+
+<script>
+const SEED = {
+  truth: [
+    "If you got a dream job offer but it meant three years of long distance, what would you choose?",
+    "During our long distance, have you ever thought about breaking up with me?",
+    "If your parents strongly opposed our relationship, how would you handle it?",
+    "Since being with me, has anything about my gender as a group surprised you?",
+    "Since being with me, has anything about my gender's body surprised you?",
+    "Deep down, am I someone you'd show off to other people?",
+    "What's the biggest thing you've been keeping to yourself lately?",
+    "Is there something you quietly compromised on just for me?",
+    "What does your ideal couple's weekend look like?",
+    "If you had to drop one - personality, looks, money, or shared values - which goes?",
+    "If you had to pick: spend your life with the one you love, or the one who loves you?",
+    "Name something you can't stand that everyone else finds normal.",
+    "What have I done that made you feel how much I love you?",
+    "When we fight or you're upset, how do you want me to make it up to you?",
+    "What makes you feel most insecure?"
+  ],
+  dare: [
+    "Pin your partner against the wall for 10 seconds.",
+    "Blindfold your partner and let them guess which body part you touched them with.",
+    "Take off one piece of clothing or one accessory.",
+    "Kiss a spot you've never kissed before.",
+    "Lie across your partner's lap like a kid and get spanked.",
+    "Ride on your partner's back for one lap around the room.",
+    "Partner names two body parts - kiss a trail from one to the other (e.g. palm to arm).",
+    "Fully clothed, rub your body against your partner for one minute.",
+    "Your partner picks any sexy pose they want to see - hold it.",
+    "Give your partner a one-minute massage.",
+    "Kiss five of your partner's facial features - lips don't count."
+  ]
+};
+
+const KEY = "td-questions-v1";
+const IDLE = "Click Go! to start";
+let items = load();
+let cat = "truth", orgCat = "truth", addCat = "truth";
+let rot = 0, spinning = false;
+
+function load(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(KEY));
+    if(Array.isArray(raw) && raw.length) return raw;
+  }catch(e){}
+  let id = 0;
+  return Object.entries(SEED).flatMap(function(e){
+    return e[1].map(function(t){ return {id:"s"+(id++), cat:e[0], text:t, archived:false}; });
+  });
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(items)); }catch(e){} }
+const active = c => items.filter(i => i.cat === c && !i.archived);
+const esc = s => s.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+
+// flat poster palette: each category is dominated by its own colour, with cream/black accents
+const PALETTE = {
+  truth:["#2f8f4f","#8cc63f","#f3efdc","#14663a","#141414","#bfe08a"],
+  dare: ["#e03a2f","#f4863c","#f3efdc","#a81d16","#141414","#f7b6ad"]
+};
+const R = 190, DOT_R = 178, IN = 54, OUT = 170; // segment, rim dots, label band
+const isLight = hex => {
+  const n = parseInt(hex.slice(1), 16);
+  return (0.299*(n>>16) + 0.587*((n>>8)&255) + 0.114*(n&255)) > 140;
+};
+function arcPath(i, n){
+  const a = 360/n, s = (i*a-90)*Math.PI/180, e = ((i+1)*a-90)*Math.PI/180;
+  const big = a > 180 ? 1 : 0;
+  return "M200 200 L"+(200+R*Math.cos(s))+" "+(200+R*Math.sin(s))+
+    " A"+R+" "+R+" 0 "+big+" 1 "+(200+R*Math.cos(e))+" "+(200+R*Math.sin(e))+" Z";
+}
+function render(){
+  const list = active(cat), n = list.length, pal = PALETTE[cat], g = document.getElementById("wheel");
+  document.getElementById("go").classList.toggle("dare", cat === "dare");
+  const ring = '<circle cx="200" cy="200" r="195" fill="#141414"/>';
+  if(!n){ g.innerHTML = ring; return; }
+  const MID = (IN + OUT)/2, BAND = OUT - IN;
+  const fs = n > 18 ? 8 : n > 12 ? 9 : 9.5;
+  const max = Math.floor(BAND / (fs * 0.58)); // ~0.58em average glyph width at weight 800
+  g.innerHTML = ring + list.map(function(it, i){
+    const mid = (i + .5) * 360/n, fill = pal[i%pal.length];
+    const on = isLight(fill) ? "#141414" : "#fffdf4";
+    const label = esc(it.text.length > max ? it.text.slice(0, max-1) + "…" : it.text);
+    return '<path d="'+arcPath(i,n)+'" fill="'+fill+'" stroke="#141414" stroke-width="3"/>'+
+      '<g transform="rotate('+(mid-90)+' 200 200)">'+
+      '<circle cx="'+(200+DOT_R)+'" cy="200" r="4.5" fill="'+on+'"/>'+
+      '<text x="'+(200+MID)+'" y="200" text-anchor="middle" dominant-baseline="middle"'+
+      ' font-size="'+fs+'" font-weight="800" fill="'+on+'">'+label+'</text></g>';
+  }).join("");
+}
+
+function winnerIndex(rotation, n){
+  const a = (((360 - (rotation % 360)) % 360) + 360) % 360;
+  return Math.floor(a / (360/n)) % n;
+}
+
+document.getElementById("go").onclick = function(){
+  const list = active(cat);
+  if(spinning || !list.length) return;
+  spinning = true;
+  const res = document.getElementById("result"), txt = document.getElementById("resultText");
+  res.classList.remove("tagged"); res.classList.add("idle"); txt.textContent = IDLE;
+  rot += 360*5 + Math.floor(Math.random()*360);
+  document.getElementById("wheel").style.transform = "rotate("+rot+"deg)";
+  setTimeout(function(){
+    spinning = false;
+    txt.textContent = list[winnerIndex(rot, list.length)].text;
+    document.getElementById("resultTag").textContent = cat;
+    res.classList.add("tagged"); res.classList.remove("idle");
+  }, 4600);
+};
+
+document.querySelectorAll(".toggle button").forEach(function(b){
+  b.onclick = function(){
+    if(spinning) return;
+    cat = b.dataset.cat;
+    document.querySelectorAll(".toggle button").forEach(x => x.classList.toggle("on", x === b));
+    const res = document.getElementById("result");
+    res.classList.remove("tagged"); res.classList.add("idle");
+    document.getElementById("resultText").textContent = IDLE;
+    render();
+  };
+});
+
+const open = id => document.getElementById(id).classList.add("on");
+const close = el => el.classList.remove("on");
+document.querySelectorAll(".overlay").forEach(function(o){
+  o.onclick = function(e){ if(e.target === o || e.target.hasAttribute("data-close")) close(o); };
+});
+
+document.getElementById("btnAdd").onclick = function(){ document.getElementById("addText").value = ""; open("ovAdd"); };
+document.querySelectorAll(".pick").forEach(function(b){
+  b.onclick = function(){
+    addCat = b.dataset.cat;
+    document.querySelectorAll(".pick").forEach(x => x.classList.toggle("on", x === b));
+  };
+});
+document.getElementById("addSave").onclick = function(){
+  const t = document.getElementById("addText").value.trim();
+  if(!t) return;
+  items.push({id:"u"+Date.now(), cat:addCat, text:t, archived:false});
+  save(); render(); close(document.getElementById("ovAdd"));
+};
+
+let view = "list"; // "list" | "archived"
+function drawOrg(){
+  const arch = view === "archived";
+  document.getElementById("orgTitle").textContent = arch ? "Archived" : "Questions";
+  document.getElementById("orgTabs").style.display = arch ? "none" : "flex";
+  const vt = document.getElementById("viewToggle");
+  vt.title = arch ? "Back to questions" : "Archived";
+  vt.innerHTML = '<svg class="ic"><use href="#'+(arch ? "ico-back" : "ico-inbox")+'"/></svg>';
+  document.querySelectorAll("[data-orgcat]").forEach(b => b.classList.toggle("on", b.dataset.orgcat === orgCat));
+  const rows = arch ? items.filter(i => i.archived) : active(orgCat);
+  document.getElementById("orgList").innerHTML = rows.map(i =>
+    '<li><i class="tag '+i.cat+'"></i><span>'+esc(i.text)+'</span>'+
+    (arch ? '<button class="restore" data-rest="'+i.id+'" title="Restore" aria-label="Restore"><svg class="ic"><use href="#ico-restore"/></svg></button>'+
+            '<button class="delete" data-delete="'+i.id+'" title="Delete permanently" aria-label="Delete permanently"><svg class="ic"><use href="#ico-trash"/></svg></button>'
+          : '<button data-arch="'+i.id+'" title="Archive"><svg class="ic"><use href="#ico-inbox"/></svg></button>')+
+    '</li>'
+  ).join("") || (arch ? "<li>No archived questions.</li>" : "<li>Nothing here yet.</li>");
+}
+function openOrg(v){ view = v; drawOrg(); open("ovOrg"); }
+document.getElementById("btnOrg").onclick = function(){ openOrg("list"); };
+document.getElementById("viewToggle").onclick = function(){
+  view = view === "archived" ? "list" : "archived"; drawOrg();
+};
+document.querySelectorAll("[data-orgcat]").forEach(function(b){
+  b.onclick = function(){ orgCat = b.dataset.orgcat; drawOrg(); };
+});
+
+document.body.addEventListener("click", function(e){
+  const b = e.target.closest("button"); if(!b) return;
+  const find = id => items.find(i => i.id === id);
+  if(b.dataset.arch){ find(b.dataset.arch).archived = true; save(); drawOrg(); render(); }
+  else if(b.dataset.rest){ find(b.dataset.rest).archived = false; save(); drawOrg(); render(); }
+  else if(b.dataset.delete && confirm("Delete this archived question permanently?")){
+    items = items.filter(i => i.id !== b.dataset.delete);
+    save(); drawOrg(); render();
+  }
+});
+
+render();
+
+if(location.search.indexOf("test") > -1){
+  const ok = (c,m) => console.assert(c, m);
+  ok(winnerIndex(0, 4) === 0, "no rotation -> first segment");
+  ok(winnerIndex(360*5, 4) === 0, "whole turns -> first segment");
+  ok(winnerIndex(90, 4) === 3, "90deg cw -> last segment under pointer");
+  ok(winnerIndex(100, 10) === 7, "100deg over 10 segments");
+  ok(winnerIndex(-90, 4) === 1, "negative rotation stays in range");
+  console.log("self-check done");
+}
+</script>
+</body>
+</html>
