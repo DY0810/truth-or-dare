@@ -109,7 +109,15 @@
   .mhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
   .mhead .tool{width:38px;height:38px;box-shadow:3px 3px 0 var(--ink)}
   .tabs{display:flex;gap:10px}
-  .tabs button{flex:1;padding:10px;border:3px solid var(--ink);border-radius:10px;background:var(--paper);
+  .badge{display:inline-grid;place-items:center;min-width:23px;height:23px;padding:0 5px;
+    margin-left:8px;border-radius:999px;background:var(--ink);color:var(--paper);
+    font-family:system-ui,sans-serif;font-size:11px;font-weight:700;font-style:normal;
+    letter-spacing:0;line-height:1;vertical-align:middle}
+  .tabs button.on .badge{background:var(--paper);color:var(--ink)}
+  .badge[hidden]{display:none}
+  #orgTitle{display:flex;align-items:center}   /* keeps the count centred on the title */
+  .tabs button{flex:1;display:flex;align-items:center;justify-content:center;
+    padding:10px;border:3px solid var(--ink);border-radius:10px;background:var(--paper);
     font-family:var(--display);font-size:13px;letter-spacing:1px;text-transform:uppercase;
     color:var(--ink);cursor:pointer}
   .tabs button.on{background:var(--ink);color:#fff}
@@ -165,7 +173,7 @@
       <button class="pick on" data-cat="truth">Truth</button>
       <button class="pick" data-cat="dare">Dare</button>
     </div>
-    <textarea id="addText" placeholder="Type your question or dare..."></textarea>
+    <textarea id="addText" placeholder="Type your question or dare...&#10;One per line - each new line is added separately."></textarea>
     <div class="row">
       <button class="ghost" data-close>Cancel</button>
       <button class="primary" id="addSave">Add</button>
@@ -176,12 +184,12 @@
 <div class="overlay" id="ovOrg">
   <div class="modal">
     <div class="mhead">
-      <h2 id="orgTitle">Questions</h2>
+      <h2 id="orgTitle"><span id="orgTitleText">Questions</span><i class="badge" id="countArchived" hidden>0</i></h2>
       <button class="tool sm" id="viewToggle"></button>
     </div>
     <div class="tabs" id="orgTabs">
-      <button class="on" data-orgcat="truth">Truth</button>
-      <button data-orgcat="dare">Dare</button>
+      <button class="on" data-orgcat="truth">Truth<i class="badge" id="countTruth">0</i></button>
+      <button data-orgcat="dare">Dare<i class="badge" id="countDare">0</i></button>
     </div>
     <ul class="list" id="orgList"></ul>
     <div class="row"><button class="ghost" data-close>Done</button></div>
@@ -252,9 +260,42 @@ const TRUTH_ADDITIONS = [
   {id:"s49", cat:"truth", text:"What's something you want to ask me but are afraid of my answer?"}
 ];
 
+const DEEP_TALK_ADDITIONS = [
+  {id:"s50", cat:"truth", text:"Do you think love can last a lifetime?"},
+  {id:"s51", cat:"truth", text:"What were your expectations or fantasies about relationships in the past? In your current relationship, which aspects have exceeded your expectations, and which have shattered them?"},
+  {id:"s52", cat:"truth", text:"Which of your parents' relationship patterns do you hope to avoid repeating?"},
+  {id:"s53", cat:"truth", text:"What are you most afraid of losing?"},
+  {id:"s54", cat:"truth", text:"What small things easily make you feel happy?"},
+  {id:"s55", cat:"truth", text:"Are you afraid of getting old? What does getting old mean to you?"},
+  {id:"s56", cat:"truth", text:"Have you ever been deeply hurt by someone?"},
+  {id:"s57", cat:"truth", text:"If you could switch bodies with me for a day, what would you do?"},
+  {id:"s58", cat:"truth", text:"Which past experiences have shaped who you are today?"},
+  {id:"s59", cat:"truth", text:"Has there ever been a moment when you suddenly thought, \"This person is the one\"?"},
+  {id:"s60", cat:"truth", text:"When did you realize you'd fallen for the other person?"},
+  {id:"s61", cat:"truth", text:"If you could know one thing about the future in advance, what would you want to know?"},
+  {id:"s62", cat:"truth", text:"Which of my little habits do you find especially cute?"},
+  {id:"s63", cat:"truth", text:"On a scale of 1 to 10, how satisfied are you with yourself right now?"},
+  {id:"s64", cat:"truth", text:"Loving only one person for a lifetime vs. having countless wonderful encounters"},
+  {id:"s65", cat:"truth", text:"Free meals forever vs. free clothes forever"},
+  {id:"s66", cat:"truth", text:"Willing to change habits for each other vs. accepting each other just as we are"},
+  {id:"s67", cat:"truth", text:"Living together in one place vs. living apart and seeing each other regularly"},
+  {id:"s68", cat:"truth", text:"Never getting sick vs. never feeling tired"},
+  {id:"s69", cat:"truth", text:"Seeking a stable life vs. constantly trying new things"},
+  {id:"s70", cat:"truth", text:"Candlelit dinner vs. street food stalls"},
+  {id:"s71", cat:"truth", text:"Bringing each other to friend gatherings vs. socializing separately"},
+  {id:"s72", cat:"truth", text:"A \"cat-type\" partner vs. a \"dog-type\" partner"}
+];
+
+// Each batch lands once, at the seed version it shipped in.
+const BATCHES = [
+  {version:2, items:SEED_ADDITIONS},
+  {version:3, items:TRUTH_ADDITIONS},
+  {version:4, items:DEEP_TALK_ADDITIONS}
+];
+
 const KEY = "td-questions-v1";
 const SEED_VERSION_KEY = "td-questions-seed-version";
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 const IDLE = "Click Go! to start";
 let items = load();
 let cat = "truth", orgCat = "truth", addCat = "truth";
@@ -264,7 +305,7 @@ function seedItems(){
   let id = 0;
   return Object.entries(BASE_SEED).flatMap(function(e){
     return e[1].map(function(t){ return {id:"s"+(id++), cat:e[0], text:t, archived:false}; });
-  }).concat(SEED_ADDITIONS.concat(TRUTH_ADDITIONS).map(function(i){ return {...i, archived:false}; }));
+  }).concat(BATCHES.flatMap(b => b.items).map(function(i){ return {...i, archived:false}; }));
 }
 function load(){
   let raw, version = 0;
@@ -276,7 +317,7 @@ function load(){
   if(fresh) raw = seedItems();
   else if(version < SEED_VERSION){
     // Apply only unseen batches, so deleted prompts from older batches stay deleted.
-    const additions = version < 2 ? SEED_ADDITIONS.concat(TRUTH_ADDITIONS) : TRUTH_ADDITIONS;
+    const additions = BATCHES.filter(b => version < b.version).flatMap(b => b.items);
     const ids = new Set(raw.map(i => i.id));
     raw.push(...additions.filter(i => !ids.has(i.id)).map(i => ({...i, archived:false})));
   }
@@ -298,6 +339,7 @@ const PALETTE = {
   dare: ["#e03a2f","#f4863c","#f3efdc","#a81d16","#141414","#f7b6ad"]
 };
 const R = 190, DOT_R = 178, IN = 54, OUT = 170; // segment, rim dots, label band
+const LABEL_LIMIT = 30; // more slices than this: colour only, no text
 const isLight = hex => {
   const n = parseInt(hex.slice(1), 16);
   return (0.299*(n>>16) + 0.587*((n>>8)&255) + 0.114*(n&255)) > 140;
@@ -316,6 +358,7 @@ function render(){
   const MID = (IN + OUT)/2, BAND = OUT - IN;
   const fs = n > 18 ? 8 : n > 12 ? 9 : 9.5;
   const max = Math.floor(BAND / (fs * 0.58)); // ~0.58em average glyph width at weight 800
+  const labelled = n <= LABEL_LIMIT; // past this the slices are too thin to read
   g.innerHTML = ring + list.map(function(it, i){
     const mid = (i + .5) * 360/n, fill = pal[i%pal.length];
     const on = isLight(fill) ? "#141414" : "#fffdf4";
@@ -323,8 +366,8 @@ function render(){
     return '<path d="'+arcPath(i,n)+'" fill="'+fill+'" stroke="#141414" stroke-width="3"/>'+
       '<g transform="rotate('+(mid-90)+' 200 200)">'+
       '<circle cx="'+(200+DOT_R)+'" cy="200" r="4.5" fill="'+on+'"/>'+
-      '<text x="'+(200+MID)+'" y="200" text-anchor="middle" dominant-baseline="middle"'+
-      ' font-size="'+fs+'" font-weight="800" fill="'+on+'">'+label+'</text></g>';
+      (labelled ? '<text x="'+(200+MID)+'" y="200" text-anchor="middle" dominant-baseline="middle"'+
+      ' font-size="'+fs+'" font-weight="800" fill="'+on+'">'+label+'</text>' : '')+'</g>';
   }).join("");
 }
 
@@ -375,22 +418,32 @@ document.querySelectorAll(".pick").forEach(function(b){
   };
 });
 document.getElementById("addSave").onclick = function(){
-  const t = document.getElementById("addText").value.trim();
-  if(!t) return;
-  items.push({id:"u"+Date.now(), cat:addCat, text:t, archived:false});
+  // one line = one question, however many sentences it holds; blank lines are ignored
+  const lines = document.getElementById("addText").value.split(/\r?\n/)
+    .map(s => s.trim()).filter(Boolean);
+  if(!lines.length) return;
+  const stamp = Date.now();
+  lines.forEach(function(text, i){
+    items.push({id:"u"+stamp+"-"+i, cat:addCat, text:text, archived:false});
+  });
   save(); render(); close(document.getElementById("ovAdd"));
 };
 
 let view = "list"; // "list" | "archived"
 function drawOrg(){
   const arch = view === "archived";
-  document.getElementById("orgTitle").textContent = arch ? "Archived" : "Questions";
+  document.getElementById("orgTitleText").textContent = arch ? "Archived" : "Questions";
+  const archived = items.filter(i => i.archived).length, badge = document.getElementById("countArchived");
+  badge.textContent = archived; badge.hidden = !arch;
   document.getElementById("orgTabs").style.display = arch ? "none" : "flex";
   const vt = document.getElementById("viewToggle");
   vt.title = arch ? "Back to questions" : "Archived";
   vt.innerHTML = '<svg class="ic"><use href="#'+(arch ? "ico-back" : "ico-inbox")+'"/></svg>';
   document.querySelectorAll("[data-orgcat]").forEach(b => b.classList.toggle("on", b.dataset.orgcat === orgCat));
+  document.getElementById("countTruth").textContent = active("truth").length;
+  document.getElementById("countDare").textContent = active("dare").length;
   const rows = arch ? items.filter(i => i.archived) : active(orgCat);
+  // 'archived' above counts the same set, so the badge always matches the list
   document.getElementById("orgList").innerHTML = rows.map(i =>
     '<li><i class="tag '+i.cat+'"></i><span>'+esc(i.text)+'</span>'+
     (arch ? '<div class="archive-actions">'+
@@ -430,8 +483,8 @@ if(location.search.indexOf("test") > -1){
   ok(winnerIndex(90, 4) === 3, "90deg cw -> last segment under pointer");
   ok(winnerIndex(100, 10) === 7, "100deg over 10 segments");
   ok(winnerIndex(-90, 4) === 1, "negative rotation stays in range");
-  ok(seedItems().length === 50, "default deck has 50 questions");
-  ok(seedItems().filter(i => i.cat === "truth").length === 35, "default deck has 35 truth questions");
+  ok(seedItems().length === 73, "default deck has 73 questions");
+  ok(seedItems().filter(i => i.cat === "truth").length === 58, "default deck has 58 truth questions");
   ok(seedItems().filter(i => i.cat === "dare").length === 15, "default deck has 15 dare questions");
   console.log("self-check done");
 }

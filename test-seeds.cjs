@@ -28,14 +28,40 @@ const approved = [
   "What do you miss about being single that you wouldn't normally admit?",
   "What's something you want to ask me but are afraid of my answer?"
 ];
+const deepTalk = [
+  "Do you think love can last a lifetime?",
+  "What were your expectations or fantasies about relationships in the past? In your current relationship, which aspects have exceeded your expectations, and which have shattered them?",
+  "Which of your parents' relationship patterns do you hope to avoid repeating?",
+  "What are you most afraid of losing?",
+  "What small things easily make you feel happy?",
+  "Are you afraid of getting old? What does getting old mean to you?",
+  "Have you ever been deeply hurt by someone?",
+  "If you could switch bodies with me for a day, what would you do?",
+  "Which past experiences have shaped who you are today?",
+  "Has there ever been a moment when you suddenly thought, \"This person is the one\"?",
+  "When did you realize you'd fallen for the other person?",
+  "If you could know one thing about the future in advance, what would you want to know?",
+  "Which of my little habits do you find especially cute?",
+  "On a scale of 1 to 10, how satisfied are you with yourself right now?",
+  "Loving only one person for a lifetime vs. having countless wonderful encounters",
+  "Free meals forever vs. free clothes forever",
+  "Willing to change habits for each other vs. accepting each other just as we are",
+  "Living together in one place vs. living apart and seeing each other regularly",
+  "Never getting sick vs. never feeling tired",
+  "Seeking a stable life vs. constantly trying new things",
+  "Candlelit dinner vs. street food stalls",
+  "Bringing each other to friend gatherings vs. socializing separately",
+  "A \"cat-type\" partner vs. a \"dog-type\" partner"
+];
+const newest = approved.concat(deepTalk);
 
 const fresh = boot();
-assert.equal(fresh.length, 50, "fresh deck receives the ten approved truths");
-assert.equal(fresh.filter(i => i.cat === "truth").length, 35);
+assert.equal(fresh.length, 73, "fresh deck receives the approved and deep-talk truths");
+assert.equal(fresh.filter(i => i.cat === "truth").length, 58);
 assert.equal(fresh.filter(i => i.cat === "dare").length, 15);
-assert.deepEqual(fresh.filter(i => Number(i.id.slice(1)) >= 40).map(i => i.text), approved);
-assert.equal(new Set(fresh.map(i => i.id)).size, 50);
-assert.equal(new Set(fresh.map(i => i.text)).size, 50);
+assert.deepEqual(fresh.filter(i => Number(i.id.slice(1)) >= 40).map(i => i.text), newest);
+assert.equal(new Set(fresh.map(i => i.id)).size, 73);
+assert.equal(new Set(fresh.map(i => i.text)).size, 73);
 assert.deepEqual(boot(), fresh, "fresh deck persists without duplicate additions");
 
 // Model a version-2 deck with deleted, archived, and custom questions.
@@ -47,9 +73,9 @@ store.set(key, JSON.stringify(previous));
 store.set(versionKey, "2");
 const upgraded = boot();
 assert.deepEqual(upgraded.slice(0, previous.length), previous, "saved questions stay untouched");
-assert.deepEqual(upgraded.slice(previous.length).map(i => i.text), approved);
+assert.deepEqual(upgraded.slice(previous.length).map(i => i.text), newest);
 assert.deepEqual(upgraded.filter(i => i.cat === "dare"), previous.filter(i => i.cat === "dare"));
-assert.equal(store.get(versionKey), "3");
+assert.equal(store.get(versionKey), "4");
 assert.deepEqual(boot(), upgraded, "migration runs only once");
 const deleted = upgraded.filter(i => i.id !== "s40");
 store.set(key, JSON.stringify(deleted));
@@ -57,7 +83,10 @@ assert.deepEqual(boot(), deleted, "deleted additions stay deleted after reload")
 store.set(key, "[]");
 assert.deepEqual(boot(), [], "an empty saved deck stays empty");
 store.set(versionKey, "2");
-assert.deepEqual(boot().map(i => i.text), approved, "empty older decks receive only new truths");
+assert.deepEqual(boot().map(i => i.text), newest, "empty older decks receive only unseen batches");
+store.set(key, "[]");
+store.set(versionKey, "3");
+assert.deepEqual(boot().map(i => i.text), deepTalk, "version-3 decks receive only the deep-talk batch");
 
 store.clear();
 store.set(key, JSON.stringify(fresh.filter(i => Number(i.id.slice(1)) < 26)));
