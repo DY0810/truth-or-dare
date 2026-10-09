@@ -1254,6 +1254,7 @@
               localStorage.setItem(SYNCED_KEY, "1");
             } catch (e) {}
           }
+          if (JSON.stringify(rows) === JSON.stringify(items)) return; // nothing new: don't redraw
           items = rows;
           save();
           render();
@@ -1264,6 +1265,10 @@
       document.addEventListener("visibilitychange", function () {
         if (!document.hidden && !spinning) pull();
       });
+      // Pick up other people's questions while the page sits open.
+      setInterval(function () {
+        if (!document.hidden && !spinning) pull();
+      }, 5000);
 
       render();
       pull();
