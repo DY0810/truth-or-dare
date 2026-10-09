@@ -34,8 +34,14 @@ Everything is stored in the browser's `localStorage` under the key
 The default deck has 73 built-in questions (58 truth, 15 dare). Existing saved
 decks receive each new batch once: the original 14 additions, then 10 more
 truths, then 23 deep-talk truths. Archived, deleted, and custom questions are
-preserved. Clearing site data resets the deck. The store is per-browser, so two
-devices keep separate lists.
+preserved.
+
+The shared copy lives in Supabase (project `dy-voice-agent`, table
+`td_questions`), so every device sees the same deck. The page reads it on load
+and whenever the tab comes back into focus. Adds, archives, and deletes are
+written straight to it. `localStorage` is the offline copy. The first time a
+device syncs, it uploads any questions only it has. Anyone with the link can
+edit the deck.
 
 ## Self-check
 
