@@ -850,7 +850,12 @@
       let cat = "truth",
         orgCat = "truth",
         addCat = "truth";
-      const seen = new Set();
+      // Persisted so a reload (phones drop background tabs) doesn't restart the round.
+      const SEEN_KEY = "td-seen";
+      let seen = new Set();
+      try {
+        seen = new Set(JSON.parse(localStorage.getItem(SEEN_KEY)) || []);
+      } catch (e) {}
       let lastId = null;
       let rot = 0,
         spinning = false;
@@ -1047,6 +1052,9 @@
           idx = list.indexOf(pick),
           n = list.length;
         seen.add(pick.id);
+        try {
+          localStorage.setItem(SEEN_KEY, JSON.stringify([...seen]));
+        } catch (e) {}
         lastId = pick.id;
         // land somewhere inside the picked slice, away from its edges
         const a = ((idx + 0.15 + Math.random() * 0.7) * 360) / n;
