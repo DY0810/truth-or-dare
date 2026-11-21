@@ -368,6 +368,10 @@
         place-items: center;
         margin-top: 2px;
       }
+      /* li padding 13 + button padding 2 - 7 = icon sits 8px from the border */
+      .list li button[data-arch] {
+        margin-right: -7px;
+      }
       .archive-actions {
         display: flex;
         align-items: center;
@@ -846,6 +850,8 @@
       let cat = "truth",
         orgCat = "truth",
         addCat = "truth";
+      const seen = new Set();
+      let lastId = null;
       let rot = 0,
         spinning = false;
 
@@ -1031,7 +1037,21 @@
         res.classList.remove("tagged");
         res.classList.add("idle");
         txt.textContent = IDLE;
-        rot += 360 * 5 + Math.floor(Math.random() * 360);
+        // Deal without repeats: nothing comes up twice until the whole deck has been seen.
+        let pool = list.filter((i) => !seen.has(i.id));
+        if (!pool.length) {
+          list.forEach((i) => seen.delete(i.id));
+          pool = list.length > 1 ? list.filter((i) => i.id !== lastId) : list;
+        }
+        const pick = pool[Math.floor(Math.random() * pool.length)],
+          idx = list.indexOf(pick),
+          n = list.length;
+        seen.add(pick.id);
+        lastId = pick.id;
+        // land somewhere inside the picked slice, away from its edges
+        const a = ((idx + 0.15 + Math.random() * 0.7) * 360) / n;
+        rot += 360 * 5 + ((((360 - a - rot) % 360) + 360) % 360);
+        console.assert(winnerIndex(rot, n) === idx, "wheel landed off the pick");
         document.getElementById("wheel").style.transform =
           "rotate(" + rot + "deg)";
         setTimeout(function () {
