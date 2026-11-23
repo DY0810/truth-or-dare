@@ -1,0 +1,25 @@
+name: Keep Supabase awake
+
+# The free Supabase plan pauses a project after a week without activity, which
+# takes the shared deck offline. One small read a day keeps it running.
+on:
+  schedule:
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read one row from the shared deck
+        run: |
+          # The deck is only needed through 15 Jan 2027; after that, let it pause.
+          if [ "$(date -u +%Y%m%d)" -gt 20270115 ]; then
+            echo "Past 15 Jan 2027, not pinging."
+            exit 0
+          fi
+          # Same publishable key the page ships in index.html. --fail turns a paused
+          # project into a failed run, which GitHub emails about.
+          curl --fail --silent --show-error --max-time 30 \
+            -H "apikey: sb_publishable_I9A7GAvQtWaB64lZ1wNr4A_GfH-2omn" \
+            "https://njxowvcjnlzmstfazwlb.supabase.co/rest/v1/td_questions?select=id&limit=1"
